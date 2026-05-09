@@ -1,0 +1,156 @@
+import React, { useState } from 'react'
+import { Plus, Search, FolderKanban, Eye, Edit2 } from 'lucide-react'
+import Card from '../components/ui/Card'
+import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
+import Table from '../components/ui/Table'
+import Modal from '../components/ui/Modal'
+import { proyectos } from '../data/mockData'
+
+const estadoOptions = ['Todos', 'En progreso', 'Planificación', 'Completado', 'Pausado', 'Cancelado']
+
+function ProgressBar({ value }) {
+  const color = value === 100 ? 'bg-green-500' : value >= 60 ? 'bg-blue-500' : value >= 30 ? 'bg-yellow-500' : 'bg-red-400'
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${value}%` }} />
+      </div>
+      <span className="text-xs text-gray-500 w-8 text-right">{value}%</span>
+    </div>
+  )
+}
+
+export default function Proyectos() {
+  const [search, setSearch] = useState('')
+  const [estadoFilter, setEstadoFilter] = useState('Todos')
+  const [selected, setSelected] = useState(null)
+
+  const filtered = proyectos.filter(p => {
+    const matchSearch = search === '' ||
+      p.proyecto.toLowerCase().includes(search.toLowerCase()) ||
+      p.cliente.toLowerCase().includes(search.toLowerCase()) ||
+      p.responsable.toLowerCase().includes(search.toLowerCase())
+    const matchEstado = estadoFilter === 'Todos' || p.estado === estadoFilter
+    return matchSearch && matchEstado
+  })
+
+  const columns = [
+    { key: 'id', label: 'ID', render: (v) => <span className="font-mono text-xs font-semibold text-blue-600">{v}</span> },
+    { key: 'proyecto', label: 'Proyecto', render: (v) => <span className="font-medium text-gray-800 max-w-xs block truncate">{v}</span> },
+    { key: 'cliente', label: 'Cliente' },
+    { key: 'estado', label: 'Estado', render: (v) => <Badge label={v} /> },
+    { key: 'prioridad', label: 'Prioridad', render: (v) => <Badge label={v} /> },
+    { key: 'avance', label: 'Avance', render: (v) => <ProgressBar value={v} /> },
+    { key: 'fechaInicio', label: 'Inicio', render: (v) => <span className="text-xs text-gray-400">{v}</span> },
+    { key: 'fechaFin', label: 'Fin', render: (v) => <span className="text-xs text-gray-400">{v}</span> },
+    { key: 'responsable', label: 'Responsable' },
+    {
+      key: 'id', label: 'Acciones',
+      render: (_, row) => (
+        <div className="flex gap-1">
+          <button onClick={() => setSelected(row)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
+            <Eye size={14} />
+          </button>
+          <button className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all">
+            <Edit2 size={14} />
+          </button>
+        </div>
+      )
+    },
+  ]
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Gestión de Proyectos</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Seguimiento de proyectos y entregables</p>
+        </div>
+        <Button icon={Plus}>Nuevo proyecto</Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-4">
+        {[
+          { label: 'En progreso', value: proyectos.filter(p => p.estado === 'En progreso').length, color: 'text-blue-600 bg-blue-50' },
+          { label: 'Planificación', value: proyectos.filter(p => p.estado === 'Planificación').length, color: 'text-purple-600 bg-purple-50' },
+          { label: 'Completados', value: proyectos.filter(p => p.estado === 'Completado').length, color: 'text-green-600 bg-green-50' },
+          { label: 'Pausados', value: proyectos.filter(p => p.estado === 'Pausado').length, color: 'text-yellow-600 bg-yellow-50' },
+        ].map(stat => (
+          <div key={stat.label} className={`rounded-2xl px-5 py-4 ${stat.color}`}>
+            <p className="text-2xl font-bold">{stat.value}</p>
+            <p className="text-sm font-medium mt-0.5">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar por proyecto, cliente o responsable..."
+              className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <select
+            value={estadoFilter}
+            onChange={e => setEstadoFilter(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {estadoOptions.map(o => <option key={o}>{o}</option>)}
+          </select>
+        </div>
+      </Card>
+
+      <Card padding={false}>
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-900">Proyectos</h3>
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <FolderKanban size={13} />
+            {filtered.length} proyectos
+          </div>
+        </div>
+        <Table columns={columns} data={filtered} />
+      </Card>
+
+      <Modal open={!!selected} onClose={() => setSelected(null)} title="Detalle del proyecto">
+        {selected && (
+          <div className="space-y-4">
+            <div className="p-4 bg-blue-50 rounded-xl">
+              <p className="font-semibold text-gray-900">{selected.proyecto}</p>
+              <p className="text-sm text-blue-600 mt-0.5">{selected.id} · {selected.cliente}</p>
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Avance del proyecto</span>
+                <span className="font-semibold text-gray-800">{selected.avance}%</span>
+              </div>
+              <ProgressBar value={selected.avance} />
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              {[
+                ['Estado', <Badge key="e" label={selected.estado} />],
+                ['Prioridad', <Badge key="p" label={selected.prioridad} />],
+                ['Fecha inicio', selected.fechaInicio],
+                ['Fecha fin', selected.fechaFin],
+                ['Responsable', selected.responsable],
+                ['Cliente', selected.cliente],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">{label}</p>
+                  <p className="text-gray-700">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  )
+}

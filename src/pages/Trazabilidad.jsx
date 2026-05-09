@@ -1,0 +1,157 @@
+import React, { useState } from 'react'
+import { Search, Filter, Plus, Eye, Edit2, Cpu } from 'lucide-react'
+import Card from '../components/ui/Card'
+import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
+import Table from '../components/ui/Table'
+import Modal from '../components/ui/Modal'
+import { equipos } from '../data/mockData'
+
+const estadoOptions = ['Todos', 'Activo', 'En traslado', 'Inactivo']
+const categoriaOptions = ['Todas', 'Servidor', 'Red', 'Energía', 'Seguridad']
+
+export default function Trazabilidad() {
+  const [search, setSearch] = useState('')
+  const [estadoFilter, setEstadoFilter] = useState('Todos')
+  const [categoriaFilter, setCategoriaFilter] = useState('Todas')
+  const [selected, setSelected] = useState(null)
+
+  const filtered = equipos.filter(eq => {
+    const matchSearch = search === '' ||
+      eq.serial.toLowerCase().includes(search.toLowerCase()) ||
+      eq.nombre.toLowerCase().includes(search.toLowerCase()) ||
+      eq.custodio.toLowerCase().includes(search.toLowerCase()) ||
+      eq.datacenter.toLowerCase().includes(search.toLowerCase())
+    const matchEstado = estadoFilter === 'Todos' || eq.estado === estadoFilter
+    const matchCategoria = categoriaFilter === 'Todas' || eq.categoria === categoriaFilter
+    return matchSearch && matchEstado && matchCategoria
+  })
+
+  const columns = [
+    { key: 'serial', label: 'Serial', render: (v) => <span className="font-mono text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">{v}</span> },
+    { key: 'nombre', label: 'Nombre', render: (v) => <span className="font-medium text-gray-800 max-w-xs truncate block">{v}</span> },
+    { key: 'estado', label: 'Estado', render: (v) => <Badge label={v} /> },
+    { key: 'datacenter', label: 'Datacenter' },
+    { key: 'rack', label: 'Rack', render: (v) => <span className="font-mono text-xs">{v}</span> },
+    { key: 'custodio', label: 'Custodio' },
+    { key: 'ultimaActualizacion', label: 'Última actualización', render: (v) => <span className="text-gray-400 text-xs">{v}</span> },
+    {
+      key: 'id', label: 'Acciones',
+      render: (_, row) => (
+        <div className="flex items-center gap-1">
+          <button onClick={() => setSelected(row)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
+            <Eye size={14} />
+          </button>
+          <button className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all">
+            <Edit2 size={14} />
+          </button>
+        </div>
+      )
+    },
+  ]
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Trazabilidad de Equipos</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{filtered.length} equipos encontrados</p>
+        </div>
+        <Button icon={Plus}>Registrar equipo</Button>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar por serial, nombre, custodio o datacenter..."
+              className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <select
+            value={estadoFilter}
+            onChange={e => setEstadoFilter(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {estadoOptions.map(o => <option key={o}>{o}</option>)}
+          </select>
+          <select
+            value={categoriaFilter}
+            onChange={e => setCategoriaFilter(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {categoriaOptions.map(o => <option key={o}>{o}</option>)}
+          </select>
+        </div>
+      </Card>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: 'Activos', value: equipos.filter(e => e.estado === 'Activo').length, color: 'text-green-600 bg-green-50' },
+          { label: 'En traslado', value: equipos.filter(e => e.estado === 'En traslado').length, color: 'text-yellow-600 bg-yellow-50' },
+          { label: 'Inactivos', value: equipos.filter(e => e.estado === 'Inactivo').length, color: 'text-red-600 bg-red-50' },
+        ].map(stat => (
+          <div key={stat.label} className={`rounded-2xl px-5 py-4 ${stat.color} border border-opacity-20`}>
+            <p className="text-2xl font-bold">{stat.value}</p>
+            <p className="text-sm font-medium mt-0.5">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Table */}
+      <Card padding={false}>
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-900">Inventario de equipos</h3>
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <Cpu size={13} />
+            {filtered.length} equipos
+          </div>
+        </div>
+        <Table columns={columns} data={filtered} />
+      </Card>
+
+      {/* Detail modal */}
+      <Modal open={!!selected} onClose={() => setSelected(null)} title="Detalle del equipo">
+        {selected && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl">
+              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
+                <Cpu size={18} className="text-white" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">{selected.nombre}</p>
+                <p className="text-sm font-mono text-blue-600">{selected.serial}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              {[
+                ['Estado', <Badge key="e" label={selected.estado} />],
+                ['Categoría', selected.categoria],
+                ['Datacenter', selected.datacenter],
+                ['Rack', selected.rack],
+                ['Ubicación', selected.ubicacion],
+                ['Custodio', selected.custodio],
+                ['Última actualización', selected.ultimaActualizacion],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">{label}</p>
+                  <p className="text-gray-700">{value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button variant="primary" className="flex-1">Editar equipo</Button>
+              <Button variant="secondary">Historial</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  )
+}
